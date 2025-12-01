@@ -1,0 +1,35 @@
+{
+  "name": "react-static-pro-plugin-sass",
+  "version": "1.2.0",
+  "description": "A react static pro plugin that adds SSR support for sass",
+  "main": "node.api.js",
+  "repository": "https://github.com/satishattada/react-static-pro-sass.git",
+  "author": "Satish Attada <satishattada@gmail.com>",
+  "license": "MIT",
+  "private": false,
+  "scripts": {
+    "build": "babel src --out-dir .",
+    "watch": "yarn build --watch",
+    "test": "yarn format",
+    "format": "prettier src/**/*.js --write",
+    "preversion": "yarn build"
+  },
+  "peerDependencies": {
+    "browserslist": "^4.6.6"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.5.5",
+    "@babel/core": "^7.5.5",
+    "@babel/preset-env": "^7.5.5",
+    "browserslist": "^4.6.6"
+  },
+  "dependencies": {
+    "autoprefixer": "^10.4.19",
+    "css-loader": "^7.1.2",
+    "extract-css-chunks-webpack-plugin": "^4.6.0",
+    "postcss-flexbugs-fixes": "^5.0.2",
+    "sass": "^1.35.1",
+    "sass-loader": "10.x",
+    "semver": "^6.3.1"
+  }
+}
