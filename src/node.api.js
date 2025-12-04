@@ -1,88 +1,104 @@
-import ExtractCssChunks from 'extract-css-chunks-webpack-plugin'
+import MiniCssExtractPlugin from 'mini-css-extract-plugin'
 import autoprefixer from 'autoprefixer'
 import postcssFlexbugsFixes from 'postcss-flexbugs-fixes'
-import semver from 'semver'
 
 export default ({ includePaths = [], cssLoaderOptions = {}, ...rest }) => ({
   webpack: (config, { stage }) => {
+    console.log('✅ SASS PLUGIN INITIALIZED - webpack config stage:', stage)
+    
     let loaders = []
 
-    const sassLoaderPath = require.resolve('sass-loader')
-
     const sassLoader = {
-      loader: sassLoaderPath,
+      loader: 'sass-loader',
       options: {
+        sourceMap: stage === 'dev',
         sassOptions: {
           includePaths: ['src/', ...includePaths],
           ...rest,
         },
       },
     }
+
     const cssLoader = {
       loader: 'css-loader',
       options: {
-        importLoaders: 1,
-        sourceMap: false,
+        importLoaders: 2,
+        sourceMap: stage === 'dev',
+        modules: false,
         ...cssLoaderOptions,
       },
     }
+
     const postCssLoader = {
       loader: 'postcss-loader',
       options: {
-        sourceMap: true,
-        ident: 'postcss',
-        plugins: () => [
-          postcssFlexbugsFixes,
-          autoprefixer({
-            flexbox: 'no-2009',
-          }),
-        ],
+        sourceMap: stage === 'dev',
+        postcssOptions: {
+          plugins: [
+            postcssFlexbugsFixes,
+            autoprefixer({
+              flexbox: 'no-2009',
+            }),
+          ],
+        },
       },
     }
 
     if (stage === 'dev') {
-      // Dev
+      // Development: use style-loader for HMR
+      console.log('🔧 SASS PLUGIN: Dev mode - using style-loader for HMR')
       loaders = [
-        {
-          loader: ExtractCssChunks.loader,
-          options: {
-            hmr: true,
-          },
-        },
+        'style-loader',
         cssLoader,
         postCssLoader,
         sassLoader,
       ]
     } else if (stage === 'node') {
-      // Node
-      // Don't extract css to file during node build process
-      loaders = [cssLoader, postCssLoader, sassLoader]
+      // Node/SSR: use css-loader/locals
+      console.log('🔧 SASS PLUGIN: Node stage - using css-loader/locals for SSR')
+      loaders = [
+        {
+          loader: 'css-loader/locals',
+          options: cssLoader.options,
+        },
+        postCssLoader,
+        sassLoader,
+      ]
     } else {
-      // Prod
-
-      // for legacy css-loader version (<2.0) we need to add "minimize" to minify css code
-      // for >2.0 it is handled with https://github.com/NMFR/optimize-css-assets-webpack-plugin
-      const cssLoaderVersion = require('css-loader/package.json').version
-      if (semver.satisfies(cssLoaderVersion, '<2') === true) {
-        cssLoader.options.minimize = true
-      }
-
-      loaders = [ExtractCssChunks.loader, cssLoader, postCssLoader, sassLoader]
+      // Production: use MiniCssExtractPlugin for code splitting
+      console.log('🔧 SASS PLUGIN: Production mode - extracting CSS with MiniCssExtractPlugin')
+      loaders = [
+        MiniCssExtractPlugin.loader,
+        cssLoader,
+        postCssLoader,
+        sassLoader,
+      ]
     }
 
-    config.module.rules[0].oneOf.unshift({
-      test: /\.s(a|c)ss$/,
-      use: loaders,
-    })
+    console.log('🔧 SASS PLUGIN: Adding SCSS rule to webpack config')
+    
+    // Handle both oneOf structure and flat rules array
+    if (config.module.rules[0]?.oneOf) {
+      console.log('📋 SASS PLUGIN: Found oneOf structure, adding rule to oneOf array')
+      config.module.rules[0].oneOf.unshift({
+        test: /\.s(a|c)ss$/,
+        use: loaders,
+      })
+    } else {
+      console.log('📋 SASS PLUGIN: No oneOf structure, adding rule to main rules array')
+      config.module.rules.unshift({
+        test: /\.s(a|c)ss$/,
+        use: loaders,
+      })
+    }
 
-    if (
-      config.optimization.splitChunks &&
-      config.optimization.splitChunks &&
-      config.optimization.splitChunks.cacheGroups.styles
-    ) {
+    // Update splitChunks for CSS optimization
+    if (config.optimization?.splitChunks?.cacheGroups?.styles) {
+      console.log('🔧 SASS PLUGIN: Updating splitChunks cacheGroups for SCSS')
       config.optimization.splitChunks.cacheGroups.styles.test = /\.(c|sc|sa)ss$/
     }
 
+    console.log('✅ SASS PLUGIN: SCSS loader rule added successfully')
     return config
   },
 })
